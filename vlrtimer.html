@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>VLR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --glass: rgba(255,255,255,0.06);
+      --glass-b: rgba(255,255,255,0.11);
+      --text: rgba(255,255,255,0.95);
+      --muted: rgba(255,255,255,0.40);
+      --accent: rgba(255,255,255,0.65);
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      font-family: 'Syne', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #bg {
+      position: fixed; inset: 0;
+      background: linear-gradient(145deg, #12121e 0%, #1a1a30 35%, #0e2240 65%, #12121e 100%);
+      background-size: cover; background-position: center;
+      z-index: 0;
+      transition: background 0.6s ease;
+    }
+    #bg::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.28);
+      pointer-events: none;
+    }
+
+    #app {
+      position: fixed; inset: 0;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    /* ── Brand ── */
+    #brand {
+      position: fixed;
+      top: clamp(1.5rem, 5vh, 2.6rem);
+      left: 50%; transform: translateX(-50%);
+      white-space: nowrap;
+      display: flex;
+      align-items: baseline;
+      gap: 0.3em;
+      letter-spacing: 0.18em;
+    }
+    .brand-part {
+      font-family: 'Syne', sans-serif;
+      font-weight: 500;
+      font-size: clamp(0.6rem, 1.6vw, 0.78rem);
+      color: rgba(255,255,255,0.45);
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+    }
+    .brand-vlr {
+      font-family: 'Bebas Neue', sans-serif;
+      font-weight: 400;
+      font-size: clamp(1.4rem, 4vw, 2.2rem);
+      color: var(--text);
+      letter-spacing: 0.12em;
+      line-height: 1;
+    }
+    .brand-dash {
+      font-family: 'Syne', sans-serif;
+      font-weight: 300;
+      font-size: clamp(0.6rem, 1.6vw, 0.78rem);
+      color: rgba(255,255,255,0.2);
+      letter-spacing: 0;
+    }
+
+    /* ── Timer ── */
+    #timer-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.1rem;
+      margin-bottom: 1.8rem;
+    }
+
+    #timer-display {
+      font-family: 'Bebas Neue', sans-serif;
+      font-weight: 400;
+      font-size: clamp(4.5rem, 18vw, 12rem);
+      color: var(--text);
+      letter-spacing: 0.06em;
+      line-height: 1;
+      text-align: center;
+      user-select: none;
+    }
+
+    #session-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: clamp(0.7rem, 1.6vw, 0.85rem);
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      text-align: center;
+      max-width: 520px;
+      padding: 0 1.5rem;
+      min-height: 1.4em;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.4s var(--ease), transform 0.4s var(--ease);
+    }
+    #session-label.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── Clock ── */
+    #clock-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      margin-bottom: 2.8rem;
+      padding: 0.9rem 2.4rem;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(10px);
+    }
+    #clock-time {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: clamp(1.5rem, 4.5vw, 3rem);
+      color: var(--text);
+      letter-spacing: 0.12em;
+      line-height: 1;
+    }
+    #clock-date {
+      font-family: 'Syne', sans-serif;
+      font-weight: 400;
+      font-size: clamp(0.65rem, 1.8vw, 0.85rem);
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+    }
+
+    /* ── Sync indicator ── */
+    #sync-indicator {
+      position: fixed;
+      top: clamp(1.5rem, 5vh, 2.6rem);
+      right: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+      color: rgba(255,255,255,0.25);
+      transition: color 0.3s;
+    }
+    #sync-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      transition: background 0.3s;
+    }
+    #sync-indicator.syncing { color: rgba(180,200,255,0.55); }
+    #sync-indicator.syncing #sync-dot { background: rgba(140,180,255,0.7); animation: pulse 1s infinite; }
+    #sync-indicator.ok { color: rgba(120,220,150,0.5); }
+    #sync-indicator.ok #sync-dot { background: rgba(100,220,130,0.65); }
+    #sync-indicator.error { color: rgba(255,140,120,0.55); }
+    #sync-indicator.error #sync-dot { background: rgba(255,120,100,0.7); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ── Buttons ── */
+    .btn {
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: 0.68rem;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      padding: 0.85rem 2.8rem;
+      border: 1px solid var(--glass-b);
+      background: var(--glass);
+      color: var(--text);
+      cursor: pointer;
+      border-radius: 0;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: background 0.22s, border-color 0.22s, transform 0.15s;
+    }
+    .btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.28); }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-ghost {
+      background: transparent;
+      border-color: transparent;
+      color: var(--muted);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.07); color: var(--text); border-color: transparent; }
+
+    .btn-stop {
+      border-color: rgba(255, 110, 110, 0.35);
+      color: rgba(255, 185, 185, 0.88);
+    }
+    .btn-stop:hover { background: rgba(255,80,80,0.1); border-color: rgba(255,110,110,0.6); }
+
+    #controls { display: flex; gap: 0.9rem; align-items: center; }
+
+    /* ── Bottom nav ── */
+    #bottom-left {
+      position: fixed;
+      bottom: 2rem; left: 2rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .bottom-btn {
+      font-family: 'Syne', sans-serif;
+      font-weight: 500;
+      font-size: 0.6rem;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: none; border: none;
+      cursor: pointer;
+      transition: color 0.2s;
+      padding: 0.4rem;
+    }
+    .bottom-btn:hover { color: var(--text); }
+
+    /* ── Wallpaper ── */
+    #wallpaper-btn {
+      position: fixed;
+      bottom: 1.7rem; right: 2rem;
+      width: 34px; height: 34px;
+      border: 1px solid var(--glass-b);
+      background: var(--glass);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, color 0.2s;
+      color: var(--muted);
+      z-index: 3;
+    }
+    #wallpaper-btn:hover { background: rgba(255,255,255,0.14); color: var(--text); }
+    #wallpaper-input { display: none; }
+
+    /* ── Presets panel ── */
+    #presets-panel {
+      position: fixed;
+      bottom: 5.5rem; right: 2rem;
+      background: rgba(10, 10, 20, 0.92);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      padding: 0.6rem;
+      z-index: 4;
+      min-width: 185px;
+      transform-origin: bottom right;
+      transform: scale(0.92) translateY(6px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.22s, transform 0.22s var(--ease);
+    }
+    #presets-panel.open { opacity: 1; pointer-events: all; transform: scale(1) translateY(0); }
+
+    .preset-section-label {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.55rem;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.28);
+      padding: 0.35rem 0.6rem 0.2rem;
+    }
+    .preset-item {
+      display: flex; align-items: center; gap: 0.7rem;
+      padding: 0.42rem 0.6rem;
+      cursor: pointer; border-radius: 3px;
+      transition: background 0.15s;
+    }
+    .preset-item:hover { background: rgba(255,255,255,0.08); }
+    .preset-swatch { width: 22px; height: 22px; border-radius: 3px; flex-shrink: 0; }
+    .preset-item-name {
+      font-family: 'Syne', sans-serif; font-weight: 400;
+      font-size: 0.74rem; letter-spacing: 0.04em;
+      color: var(--text); white-space: nowrap;
+    }
+    .presets-divider { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 0.4rem 0; }
+    .upload-row {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.42rem 0.6rem; cursor: pointer; border-radius: 3px;
+      transition: background 0.15s;
+    }
+    .upload-row:hover { background: rgba(255,255,255,0.08); }
+    .upload-row span {
+      font-family: 'Syne', sans-serif; font-weight: 400;
+      font-size: 0.74rem; letter-spacing: 0.04em; color: var(--muted);
+    }
+    .upload-row:hover span { color: var(--text); }
+
+    /* ── Modal ── */
+    #modal-overlay {
+      position: fixed; inset: 0;
+      z-index: 10;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem;
+      background: rgba(0,0,0,0.52);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.32s;
+    }
+    #modal-overlay.open { opacity: 1; pointer-events: all; }
+
+    #modal {
+      background: rgba(10, 10, 22, 0.92);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      padding: clamp(2rem, 6vw, 3rem);
+      width: min(92vw, 480px);
+      transform: translateY(22px) scale(0.96);
+      transition: transform 0.36s var(--ease);
+    }
+    #modal-overlay.open #modal { transform: translateY(0) scale(1); }
+
+    .modal-eyebrow {
+      font-family: 'Syne', sans-serif; font-weight: 500;
+      font-size: 0.58rem; letter-spacing: 0.3em;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+    #modal-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-weight: 400;
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      color: var(--text);
+      letter-spacing: 0.05em;
+      margin-bottom: 2rem;
+      line-height: 1;
+    }
+    #session-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid rgba(255,255,255,0.18);
+      color: var(--text);
+      font-family: 'Syne', sans-serif; font-weight: 400;
+      font-size: 1rem;
+      padding: 0.7rem 0;
+      outline: none;
+      caret-color: rgba(255,255,255,0.8);
+      transition: border-color 0.25s;
+    }
+    #session-input::placeholder { color: rgba(255,255,255,0.2); }
+    #session-input:focus { border-bottom-color: rgba(255,255,255,0.55); }
+    #modal-actions {
+      display: flex; justify-content: flex-end; gap: 0.6rem;
+      margin-top: 2rem;
+    }
+
+    /* ── History panel ── */
+    #history-panel {
+      position: fixed; inset: 0;
+      z-index: 20;
+      background: rgba(7, 7, 16, 0.96);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      transform: translateX(-100%);
+      transition: transform 0.5s var(--ease);
+      overflow-y: auto;
+      overflow-x: hidden;
+      visibility: hidden;
+    }
+    #history-panel.open { transform: translateX(0); visibility: visible; }
+
+    #history-inner {
+      padding: clamp(2rem, 8vw, 4rem);
+      max-width: 700px;
+      margin: 0 auto;
+      padding-top: clamp(3rem, 10vh, 5rem);
+    }
+
+    #history-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 2.5rem;
+    }
+    #history-title-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-weight: 400;
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      color: var(--text); line-height: 1;
+      letter-spacing: 0.06em;
+    }
+    #history-title-sub {
+      font-family: 'Syne', sans-serif; font-weight: 400;
+      font-size: 0.6rem; letter-spacing: 0.28em;
+      text-transform: uppercase; color: var(--muted);
+      margin-top: 0.5rem;
+    }
+    #close-history {
+      background: none; border: none;
+      color: var(--muted); cursor: pointer;
+      font-family: 'Syne', sans-serif; font-weight: 500;
+      font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase;
+      padding: 0.4rem; transition: color 0.2s;
+      flex-shrink: 0; margin-top: 0.4rem;
+    }
+    #close-history:hover { color: var(--text); }
+
+    #history-stats {
+      display: flex; gap: 2.5rem; flex-wrap: wrap;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .stat-val {
+      font-family: 'Bebas Neue', sans-serif;
+      font-weight: 400;
+      font-size: 2.8rem; color: var(--text); line-height: 1;
+      letter-spacing: 0.05em;
+    }
+    .stat-lbl {
+      font-family: 'Syne', sans-serif; font-weight: 500;
+      font-size: 0.57rem; letter-spacing: 0.24em;
+      text-transform: uppercase; color: var(--muted);
+      margin-top: 0.3rem;
+    }
+
+    .day-group { margin-bottom: 2.8rem; }
+    .day-label {
+      font-family: 'Syne', sans-serif; font-weight: 600;
+      font-size: 0.6rem; letter-spacing: 0.3em;
+      text-transform: uppercase; color: rgba(255,255,255,0.32);
+      margin-bottom: 1rem;
+    }
+
+    .session-row {
+      display: grid;
+      grid-template-columns: 62px 1px 1fr;
+      gap: 0 1.4rem;
+      padding: 0.9rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      align-items: start;
+    }
+    .session-row:last-child { border-bottom: none; }
+
+    .s-time { text-align: right; padding-top: 2px; }
+    .s-time-val {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.78rem; color: var(--accent);
+    }
+    .s-dur {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.6rem; color: rgba(255,255,255,0.22);
+      margin-top: 3px;
+    }
+    .s-line {
+      width: 1px; background: rgba(255,255,255,0.1);
+      align-self: stretch; margin-top: 4px;
+    }
+    .s-desc {
+      font-family: 'Syne', sans-serif; font-weight: 400;
+      font-size: 0.92rem; color: var(--text);
+      line-height: 1.55; padding-top: 1px;
+    }
+
+    #history-loading {
+      padding: 3rem 0; text-align: center;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem; color: rgba(255,255,255,0.2);
+      letter-spacing: 0.1em;
+    }
+
+    #empty-state {
+      padding: 5rem 0; text-align: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 400;
+      font-size: 1rem; color: rgba(255,255,255,0.18);
+      letter-spacing: 0.04em;
+    }
+
+    #clear-btn {
+      background: none; border: none;
+      font-family: 'Syne', sans-serif; font-weight: 500;
+      font-size: 0.58rem; letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(255,80,80,0.32); cursor: pointer;
+      padding: 0.4rem; transition: color 0.2s;
+      margin-top: 3rem; display: block;
+    }
+    #clear-btn:hover { color: rgba(255,80,80,0.65); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { animation: fadeUp 0.5s var(--ease) both; }
+
+    @media (max-width: 480px) {
+      .brand-part { font-size: 0.55rem; }
+      .brand-vlr { font-size: 1.2rem; }
+      .btn { padding: 0.8rem 2rem; }
+      #clock-wrap { padding: 0.7rem 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="bg"></div>
+
+<div id="app">
+  <div id="brand">
+    <span class="brand-part">CPTM</span>
+    <span class="brand-dash">—</span>
+    <span class="brand-vlr">VLR</span>
+    <span class="brand-dash">—</span>
+    <span class="brand-part">NNTS</span>
+  </div>
+
+  <div id="timer-wrap">
+    <div id="timer-display">00:00:00</div>
+    <div id="session-label"></div>
+  </div>
+
+  <div id="clock-wrap">
+    <div id="clock-time">00:00:00</div>
+    <div id="clock-date"></div>
+  </div>
+
+  <div id="controls">
+    <button class="btn" id="start-btn">Démarrer</button>
+    <button class="btn btn-stop" id="stop-btn" style="display:none">Terminer la séance</button>
+  </div>
+</div>
+
+<!-- Sync indicator -->
+<div id="sync-indicator">
+  <div id="sync-dot"></div>
+  <span id="sync-text">—</span>
+</div>
+
+<div id="bottom-left">
+  <button class="bottom-btn" id="history-btn">Séances</button>
+</div>
+
+<button id="wallpaper-btn" title="Fond d'écran">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+    <circle cx="8.5" cy="8.5" r="1.5"/>
+    <polyline points="21 15 16 10 5 21"/>
+  </svg>
+</button>
+<input type="file" id="wallpaper-input" accept="image/*">
+
+<div id="presets-panel"></div>
+
+<div id="modal-overlay">
+  <div id="modal">
+    <div class="modal-eyebrow">Nouvelle séance</div>
+    <div id="modal-title">Que vas-tu accomplir ?</div>
+    <input type="text" id="session-input" placeholder="Rédiger le plan financier…" maxlength="140" autocomplete="off">
+    <div id="modal-actions">
+      <button class="btn btn-ghost" id="modal-cancel">Annuler</button>
+      <button class="btn" id="modal-confirm">Lancer →</button>
+    </div>
+  </div>
+</div>
+
+<div id="history-panel">
+  <div id="history-inner">
+    <div id="history-head">
+      <div>
+        <div id="history-title-text">Séances</div>
+        <div id="history-title-sub">Historique complet</div>
+      </div>
+      <button id="close-history">Fermer ✕</button>
+    </div>
+    <div id="history-stats"></div>
+    <div id="history-list"></div>
+    <button id="clear-btn">Effacer tout l'historique</button>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    deleteDoc,
+    doc,
+    query,
+    orderBy
+  } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDlQZIgd98j_KzE07Vvg9w3sSv60w7LY44",
+    authDomain: "vlr-timer.firebaseapp.com",
+    projectId: "vlr-timer",
+    storageBucket: "vlr-timer.firebasestorage.app",
+    messagingSenderId: "289935395038",
+    appId: "1:289935395038:web:db796a15e8e830659a1a4f"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const COLLECTION = 'sessions';
+
+  // ── Sync indicator ──
+  const syncEl    = document.getElementById('sync-indicator');
+  const syncDot   = document.getElementById('sync-dot');
+  const syncText  = document.getElementById('sync-text');
+
+  function setSyncState(state, text) {
+    syncEl.className = state;
+    syncText.textContent = text;
+  }
+
+  // ── State ──
+  let running = false, startTime = null, elapsed = 0;
+  let sessionDesc = '', timerRaf = null;
+  let sessions = []; // local cache: { id (firestore doc id), desc, start, end, dur }
+
+  const bg            = document.getElementById('bg');
+  const timerDisplay  = document.getElementById('timer-display');
+  const sessionLabel  = document.getElementById('session-label');
+  const clockTime     = document.getElementById('clock-time');
+  const clockDate     = document.getElementById('clock-date');
+  const startBtn      = document.getElementById('start-btn');
+  const stopBtn       = document.getElementById('stop-btn');
+  const modalOverlay  = document.getElementById('modal-overlay');
+  const sessionInput  = document.getElementById('session-input');
+  const modalCancel   = document.getElementById('modal-cancel');
+  const modalConfirm  = document.getElementById('modal-confirm');
+  const historyBtn    = document.getElementById('history-btn');
+  const historyPanel  = document.getElementById('history-panel');
+  const closeHistory  = document.getElementById('close-history');
+  const historyList   = document.getElementById('history-list');
+  const historyStats  = document.getElementById('history-stats');
+  const clearBtn      = document.getElementById('clear-btn');
+  const wallpaperBtn  = document.getElementById('wallpaper-btn');
+  const wallpaperInput= document.getElementById('wallpaper-input');
+  const presetsPanel  = document.getElementById('presets-panel');
+
+  // ── Firestore helpers ──
+  async function loadSessions() {
+    setSyncState('syncing', 'chargement…');
+    try {
+      const q = query(collection(db, COLLECTION), orderBy('start', 'desc'));
+      const snap = await getDocs(q);
+      sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setSyncState('ok', 'synchronisé');
+      setTimeout(() => setSyncState('', '—'), 2000);
+    } catch(e) {
+      console.error('Firestore load error:', e);
+      setSyncState('error', 'erreur');
+    }
+  }
+
+  async function saveSession(s) {
+    setSyncState('syncing', 'sauvegarde…');
+    try {
+      const docRef = await addDoc(collection(db, COLLECTION), {
+        desc:  s.desc,
+        start: s.start,
+        end:   s.end,
+        dur:   s.dur
+      });
+      s.id = docRef.id;
+      setSyncState('ok', 'sauvegardé');
+      setTimeout(() => setSyncState('', '—'), 2000);
+    } catch(e) {
+      console.error('Firestore save error:', e);
+      setSyncState('error', 'erreur sync');
+    }
+  }
+
+  async function clearAllSessions() {
+    setSyncState('syncing', 'suppression…');
+    try {
+      const snap = await getDocs(collection(db, COLLECTION));
+      const dels = snap.docs.map(d => deleteDoc(doc(db, COLLECTION, d.id)));
+      await Promise.all(dels);
+      sessions = [];
+      setSyncState('ok', 'effacé');
+      setTimeout(() => setSyncState('', '—'), 2000);
+    } catch(e) {
+      console.error('Firestore clear error:', e);
+      setSyncState('error', 'erreur');
+    }
+  }
+
+  // ── Presets ──
+  const PRESETS = [
+    { name: 'Nuit profonde',  g: 'linear-gradient(145deg,#12121e 0%,#1a1a30 35%,#0e2240 65%,#12121e 100%)' },
+    { name: 'Forêt sombre',   g: 'linear-gradient(145deg,#0a1a0c 0%,#122018 40%,#1e3d28 65%,#0a1a0c 100%)' },
+    { name: 'Crépuscule',     g: 'linear-gradient(145deg,#200d2a 0%,#311640 40%,#5a1f3a 65%,#200d2a 100%)' },
+    { name: 'Braise',         g: 'linear-gradient(145deg,#160600 0%,#2e0e00 40%,#6a2200 65%,#160600 100%)' },
+    { name: 'Ardoise',        g: 'linear-gradient(145deg,#101014 0%,#18191f 50%,#101014 100%)' },
+    { name: 'Océan nuit',     g: 'linear-gradient(145deg,#07101c 0%,#0c1e35 40%,#083650 65%,#07101c 100%)' },
+    { name: 'Cendre dorée',   g: 'linear-gradient(145deg,#131008 0%,#231d0c 40%,#3a2e10 65%,#131008 100%)' },
+    { name: 'Minuit rose',    g: 'linear-gradient(145deg,#180d18 0%,#2a1228 40%,#3d1535 65%,#180d18 100%)' },
+  ];
+
+  (function buildPresets() {
+    const lbl = document.createElement('div');
+    lbl.className = 'preset-section-label';
+    lbl.textContent = 'Couleurs';
+    presetsPanel.appendChild(lbl);
+    PRESETS.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'preset-item';
+      row.innerHTML = `<div class="preset-swatch" style="background:${p.g}"></div><span class="preset-item-name">${p.name}</span>`;
+      row.addEventListener('click', () => { applyBg({ type: 'gradient', value: p.g }); closePresets(); });
+      presetsPanel.appendChild(row);
+    });
+    const hr = document.createElement('hr'); hr.className = 'presets-divider';
+    presetsPanel.appendChild(hr);
+    const upRow = document.createElement('div'); upRow.className = 'upload-row';
+    upRow.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>Importer une photo</span>`;
+    upRow.addEventListener('click', () => { wallpaperInput.click(); closePresets(); });
+    presetsPanel.appendChild(upRow);
+  })();
+
+  function applyBg(cfg) {
+    if (cfg.type === 'gradient') {
+      bg.style.cssText = `background:${cfg.value}; background-size:cover; background-position:center;`;
+    } else {
+      bg.style.cssText = `background:url(${cfg.value}) center/cover no-repeat;`;
+    }
+    try { localStorage.setItem('valeur_bg', JSON.stringify(cfg)); } catch(e) {}
+  }
+  try { const saved = JSON.parse(localStorage.getItem('valeur_bg')); if (saved) applyBg(saved); } catch(e) {}
+
+  wallpaperBtn.addEventListener('click', e => { e.stopPropagation(); presetsPanel.classList.toggle('open'); });
+  document.addEventListener('click', e => { if (!presetsPanel.contains(e.target) && e.target !== wallpaperBtn) closePresets(); });
+  function closePresets() { presetsPanel.classList.remove('open'); }
+  wallpaperInput.addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => applyBg({ type: 'image', value: ev.target.result });
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+
+  // ── Clock ──
+  const DAYS   = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const MONTHS = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
+
+  function pad(n) { return String(n).padStart(2,'0'); }
+
+  function tickClock() {
+    const n = new Date();
+    clockTime.textContent = `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+    clockDate.textContent = `${DAYS[n.getDay()]} ${n.getDate()} ${MONTHS[n.getMonth()]} ${n.getFullYear()}`;
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  function fmtTimer(ms) {
+    const t = Math.floor(ms / 1000);
+    return `${pad(Math.floor(t/3600))}:${pad(Math.floor((t%3600)/60))}:${pad(t%60)}`;
+  }
+
+  function tickTimer() {
+    elapsed = Date.now() - startTime;
+    timerDisplay.textContent = fmtTimer(elapsed);
+    timerRaf = requestAnimationFrame(tickTimer);
+  }
+
+  // ── Session lifecycle ──
+  function startSession(desc) {
+    running = true; sessionDesc = desc;
+    startTime = Date.now(); elapsed = 0;
+    sessionLabel.textContent = desc; sessionLabel.classList.add('visible');
+    startBtn.style.display = 'none'; stopBtn.style.display = '';
+    timerRaf = requestAnimationFrame(tickTimer);
+  }
+
+  async function stopSession() {
+    if (!running) return;
+    cancelAnimationFrame(timerRaf);
+    const s = { desc: sessionDesc, start: startTime, end: Date.now(), dur: elapsed };
+    sessions.unshift(s);
+    running = false;
+    timerDisplay.textContent = '00:00:00';
+    sessionLabel.classList.remove('visible');
+    startBtn.style.display = ''; stopBtn.style.display = 'none';
+    await saveSession(s);
+  }
+
+  // ── Modal ──
+  function openModal() {
+    sessionInput.value = '';
+    modalOverlay.classList.add('open');
+    setTimeout(() => sessionInput.focus(), 80);
+  }
+  function closeModal() { modalOverlay.classList.remove('open'); }
+
+  function confirmStart() {
+    const desc = sessionInput.value.trim();
+    if (!desc) { sessionInput.focus(); return; }
+    closeModal(); startSession(desc);
+  }
+
+  startBtn.addEventListener('click', openModal);
+  stopBtn.addEventListener('click', stopSession);
+  modalCancel.addEventListener('click', closeModal);
+  modalConfirm.addEventListener('click', confirmStart);
+  modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModal(); });
+  sessionInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmStart(); if (e.key === 'Escape') closeModal(); });
+
+  // ── History rendering ──
+  function fmtDuration(ms) {
+    const t = Math.floor(ms / 1000);
+    const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    if (h > 0) return `${h}h ${pad(m)}min`;
+    if (m > 0) return `${m}min ${pad(s)}s`;
+    return `${s}s`;
+  }
+
+  function dayKey(ts) {
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  }
+
+  function dayLabel(ts) {
+    const d = new Date(ts), today = new Date(), yest = new Date(today);
+    yest.setDate(today.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) return "Aujourd'hui";
+    if (d.toDateString() === yest.toDateString()) return 'Hier';
+    return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function renderHistory() {
+    historyStats.innerHTML = '';
+    historyList.innerHTML = '';
+
+    if (!sessions.length) {
+      historyList.innerHTML = '<div id="empty-state">Aucune séance enregistrée pour l\'instant.</div>';
+      clearBtn.style.display = 'none';
+      return;
+    }
+    clearBtn.style.display = '';
+
+    const totalMs = sessions.reduce((a, s) => a + s.dur, 0);
+    const days = new Set(sessions.map(s => dayKey(s.start))).size;
+    historyStats.innerHTML = `
+      <div><div class="stat-val">${sessions.length}</div><div class="stat-lbl">Séances</div></div>
+      <div><div class="stat-val">${(totalMs/3600000).toFixed(1)}h</div><div class="stat-lbl">Total travaillé</div></div>
+      <div><div class="stat-val">${days}</div><div class="stat-lbl">Jours actifs</div></div>
+    `;
+
+    const grouped = {};
+    sessions.forEach(s => {
+      const k = dayKey(s.start);
+      if (!grouped[k]) grouped[k] = { label: dayLabel(s.start), list: [] };
+      grouped[k].list.push(s);
+    });
+
+    Object.keys(grouped).forEach(k => {
+      const g = grouped[k];
+      const dayEl = document.createElement('div');
+      dayEl.className = 'day-group fade-up';
+      const rows = g.list.map(s => {
+        const d = new Date(s.start);
+        const t = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        return `<div class="session-row">
+          <div class="s-time"><div class="s-time-val">${t}</div><div class="s-dur">${fmtDuration(s.dur)}</div></div>
+          <div class="s-line"></div>
+          <div class="s-desc">${esc(s.desc)}</div>
+        </div>`;
+      }).join('');
+      dayEl.innerHTML = `<div class="day-label">${g.label}</div>${rows}`;
+      historyList.appendChild(dayEl);
+    });
+  }
+
+  historyBtn.addEventListener('click', async () => {
+    historyList.innerHTML = '<div id="history-loading">chargement…</div>';
+    historyStats.innerHTML = '';
+    historyPanel.classList.add('open');
+    await loadSessions();
+    renderHistory();
+  });
+
+  closeHistory.addEventListener('click', () => historyPanel.classList.remove('open'));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      historyPanel.classList.remove('open');
+      closeModal();
+    }
+  });
+
+  clearBtn.addEventListener('click', async () => {
+    if (confirm('Effacer tout l\'historique ? Cette action est irréversible.')) {
+      await clearAllSessions();
+      renderHistory();
+    }
+  });
+
+  // ── Init ──
+  loadSessions();
+</script>
+</body>
+</html>
