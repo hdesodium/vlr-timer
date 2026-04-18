@@ -441,7 +441,7 @@
 
     .session-row {
       display: grid;
-      grid-template-columns: 62px 1px 1fr;
+      grid-template-columns: 62px 1px 1fr auto;
       gap: 0 1.4rem;
       padding: 0.9rem 0;
       border-bottom: 1px solid rgba(255,255,255,0.04);
@@ -467,6 +467,14 @@
       font-family: 'Syne', sans-serif; font-weight: 400;
       font-size: 0.92rem; color: var(--text);
       line-height: 1.55; padding-top: 1px;
+    }
+    .s-pending {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.55rem;
+      color: rgba(255,200,100,0.5);
+      letter-spacing: 0.1em;
+      padding-top: 4px;
+      white-space: nowrap;
     }
 
     #history-loading {
@@ -608,24 +616,30 @@
     appId: "1:289935395038:web:db796a15e8e830659a1a4f"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  const fbApp = initializeApp(firebaseConfig);
+  const db = getFirestore(fbApp);
   const COLLECTION = 'sessions';
 
   // ── Sync indicator ──
-  const syncEl    = document.getElementById('sync-indicator');
-  const syncDot   = document.getElementById('sync-dot');
-  const syncText  = document.getElementById('sync-text');
+  const syncEl   = document.getElementById('sync-indicator');
+  const syncText = document.getElementById('sync-text');
+  let syncTimer  = null;
 
   function setSyncState(state, text) {
     syncEl.className = state;
     syncText.textContent = text;
+    clearTimeout(syncTimer);
+    if (state === 'ok' || state === 'error') {
+      syncTimer = setTimeout(() => { syncEl.className = ''; syncText.textContent = '—'; }, 3000);
+    }
   }
 
   // ── State ──
   let running = false, startTime = null, elapsed = 0;
   let sessionDesc = '', timerRaf = null;
-  let sessions = []; // local cache: { id (firestore doc id), desc, start, end, dur }
+  // sessions: array of { id?, desc, start, end, dur, _pending? }
+  // _pending = true means saved locally but Firestore write not confirmed yet
+  let sessions = [];
 
   const bg            = document.getElementById('bg');
   const timerDisplay  = document.getElementById('timer-display');
@@ -649,50 +663,64 @@
   const presetsPanel  = document.getElementById('presets-panel');
 
   // ── Firestore helpers ──
+
+  // Merge remote sessions with any local pending ones not yet confirmed
+  function mergeWithRemote(remoteList) {
+    const remoteIds = new Set(remoteList.map(s => s.id).filter(Boolean));
+    const stillPending = sessions.filter(s => s._pending && !remoteIds.has(s.id));
+    // Combine: remote (authoritative) + truly pending local
+    sessions = [...remoteList, ...stillPending].sort((a, b) => b.start - a.start);
+  }
+
   async function loadSessions() {
     setSyncState('syncing', 'chargement…');
     try {
       const q = query(collection(db, COLLECTION), orderBy('start', 'desc'));
       const snap = await getDocs(q);
-      sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const remoteList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      mergeWithRemote(remoteList);
       setSyncState('ok', 'synchronisé');
-      setTimeout(() => setSyncState('', '—'), 2000);
     } catch(e) {
       console.error('Firestore load error:', e);
-      setSyncState('error', 'erreur');
+      setSyncState('error', 'erreur chargement');
+      // Don't wipe local sessions on load failure — keep what we have
     }
   }
 
   async function saveSession(s) {
     setSyncState('syncing', 'sauvegarde…');
-    try {
-      const docRef = await addDoc(collection(db, COLLECTION), {
-        desc:  s.desc,
-        start: s.start,
-        end:   s.end,
-        dur:   s.dur
-      });
-      s.id = docRef.id;
-      setSyncState('ok', 'sauvegardé');
-      setTimeout(() => setSyncState('', '—'), 2000);
-    } catch(e) {
-      console.error('Firestore save error:', e);
-      setSyncState('error', 'erreur sync');
+    // Retry up to 3 times
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const docRef = await addDoc(collection(db, COLLECTION), {
+          desc:  s.desc,
+          start: s.start,
+          end:   s.end,
+          dur:   s.dur
+        });
+        s.id = docRef.id;
+        s._pending = false;
+        setSyncState('ok', 'sauvegardé');
+        return;
+      } catch(e) {
+        console.error(`Firestore save attempt ${attempt} failed:`, e);
+        if (attempt < 3) await new Promise(r => setTimeout(r, 800 * attempt));
+      }
     }
+    // All retries failed — session stays in local array with _pending=true
+    setSyncState('error', 'sync échouée — local OK');
   }
 
   async function clearAllSessions() {
     setSyncState('syncing', 'suppression…');
     try {
       const snap = await getDocs(collection(db, COLLECTION));
-      const dels = snap.docs.map(d => deleteDoc(doc(db, COLLECTION, d.id)));
-      await Promise.all(dels);
+      await Promise.all(snap.docs.map(d => deleteDoc(doc(db, COLLECTION, d.id))));
       sessions = [];
       setSyncState('ok', 'effacé');
-      setTimeout(() => setSyncState('', '—'), 2000);
     } catch(e) {
       console.error('Firestore clear error:', e);
-      setSyncState('error', 'erreur');
+      setSyncState('error', 'erreur suppression');
     }
   }
 
@@ -786,13 +814,15 @@
   async function stopSession() {
     if (!running) return;
     cancelAnimationFrame(timerRaf);
-    const s = { desc: sessionDesc, start: startTime, end: Date.now(), dur: elapsed };
+    const s = { desc: sessionDesc, start: startTime, end: Date.now(), dur: elapsed, _pending: true };
+    // Add to local cache immediately so history shows it right away
     sessions.unshift(s);
     running = false;
     timerDisplay.textContent = '00:00:00';
     sessionLabel.classList.remove('visible');
     startBtn.style.display = ''; stopBtn.style.display = 'none';
-    await saveSession(s);
+    // Save in background — history will show session even if this is slow
+    saveSession(s);
   }
 
   // ── Modal ──
@@ -873,10 +903,14 @@
       const rows = g.list.map(s => {
         const d = new Date(s.start);
         const t = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        const pendingTag = s._pending
+          ? `<div class="s-pending">sync en cours…</div>`
+          : '';
         return `<div class="session-row">
           <div class="s-time"><div class="s-time-val">${t}</div><div class="s-dur">${fmtDuration(s.dur)}</div></div>
           <div class="s-line"></div>
           <div class="s-desc">${esc(s.desc)}</div>
+          ${pendingTag}
         </div>`;
       }).join('');
       dayEl.innerHTML = `<div class="day-label">${g.label}</div>${rows}`;
@@ -884,10 +918,12 @@
     });
   }
 
+  // ── History open: show local data immediately, then refresh from Firestore ──
   historyBtn.addEventListener('click', async () => {
-    historyList.innerHTML = '<div id="history-loading">chargement…</div>';
-    historyStats.innerHTML = '';
     historyPanel.classList.add('open');
+    // Render what we already have in memory instantly
+    renderHistory();
+    // Then silently reload from Firestore and re-render
     await loadSessions();
     renderHistory();
   });
